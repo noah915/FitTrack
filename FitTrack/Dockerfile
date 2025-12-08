@@ -1,14 +1,19 @@
-FROM node:18-alpine
-WORKDIR /usr/src/app
+FROM python:3.10-slim
 
-# Copy package files if present (keeps build cache usable)
-COPY package*.json ./
+WORKDIR /app
 
-# Install dependencies if package.json exists
-RUN if [ -f package.json ]; then npm ci --only=production || true; fi
+# system deps for psycopg2, etc. (none needed for this minimal app)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+ && rm -rf /var/lib/apt/lists/*
 
-# Copy everything (project might be added later)
-COPY . .
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Default command: print a helpful message (replace with real start command later)
-CMD ["/bin/sh", "-c", "printf 'This is a placeholder Docker image for FitTrack. Add a start script in package.json to run the app.\n' && sleep 3600"]
+COPY app ./app
+
+ENV PORT=8080
+
+EXPOSE 8080
+
+CMD ["gunicorn", "app.main:app", "--bind", "0.0.0.0:8080", "--workers", "2"]
